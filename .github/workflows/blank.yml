@@ -38,7 +38,8 @@ env:
   DEBIAN_FRONTEND: noninteractive
   DEPOT_TOOLS_DIR: ${{ github.workspace }}/depot_tools
   CHECKOUT_ROOT: ${{ github.workspace }}/checkout
-  ANGLE_SRC: ${{ github.workspace }}/checkout/angle
+  # `fetch angle` checks ANGLE out directly into the current directory.
+  ANGLE_SRC: ${{ github.workspace }}/checkout
   ARCHIVE_DIR: ${{ github.workspace }}/artifacts
   LOG_DIR: ${{ github.workspace }}/build-logs
   ANGLE_REF: ${{ inputs.angle_ref }}
@@ -113,10 +114,17 @@ jobs:
           export PATH="$DEPOT_TOOLS_DIR:$PATH"
 
           mkdir -p "$CHECKOUT_ROOT" "$ARCHIVE_DIR" "$LOG_DIR"
-          cd "$CHECKOUT_ROOT"
+          cd "$ANGLE_SRC"
           fetch --nohooks angle
 
-          cd "$ANGLE_SRC"
+          # `fetch angle` uses a gclient solution named ".", so the repository
+          # is the checkout directory itself, not a nested checkout/angle path.
+          test -d "$ANGLE_SRC/.git"
+          test -f "$ANGLE_SRC/DEPS"
+          echo "ANGLE source root: $ANGLE_SRC"
+          gclient root
+          git status --short
+
           git fetch --force origin "$ANGLE_REF"
           git checkout --detach FETCH_HEAD
 
